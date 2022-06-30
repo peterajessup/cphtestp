@@ -16,7 +16,7 @@ FROM ubuntu:18.04
 
 LABEL maintainer "Sam Massey <smassey@uk.ibm.com>"
 
-COPY *.deb /
+# COPY *.deb /
 COPY mqlicense.sh /
 COPY lap /lap
 
