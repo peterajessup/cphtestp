@@ -10,7 +10,7 @@ spec:
   output:
     to:
       kind: ImageStreamTag
-      name: 'cphtest:v0.01'
+      name: 'perftest:v0.01'
   strategy:
     dockerStrategy:
       pullSecret:
