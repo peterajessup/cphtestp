@@ -4,34 +4,34 @@
 function runclients {
   threads=$1
   msgsize=$2
-  echo "threads=$threads" >> /home/mqperf/cph/results
-  echo "Starting test with $threads requesters" >> /home/mqperf/cph/output
-  rate=$(./cphreq.sh $threads $msgsize | tee -a /home/mqperf/cph/output | grep avgRate | awk -F ',' '{ print $3 }') 
+  echo "threads=$threads" >> /tmp/results
+  echo "Starting test with $threads requesters" >> /tmp/output
+  rate=$(./cphreq.sh $threads $msgsize | tee -a /tmp/output | grep avgRate | awk -F ',' '{ print $3 }') 
   rate=$(echo $rate | awk -F '=' '{print $2}')
-  echo "avgRate=$rate" >> /home/mqperf/cph/results
+  echo "avgRate=$rate" >> /tmp/results
 
   cpu=$(awk '{print $12}' /tmp/mpstat | tail -6 |  awk '{total+=$1} END{printf "%0.2f",(NR?100-(total/NR):-1)}') 
-  echo "CPU=$cpu" >> /home/mqperf/cph/results
+  echo "CPU=$cpu" >> /tmp/results
 
   readMB=$(awk -F ',' '{print $6}' /tmp/dstat | tail -n +8 | tail -6 |  awk '{total+=$1} END{printf "%0.2f",(NR?((total/NR)/(1024*1024)):-1)}')
-  echo "Read=$readMB" >> /home/mqperf/cph/results
+  echo "Read=$readMB" >> /tmp/results
 
   writeMB=$(awk -F ',' '{print $7}' /tmp/dstat | tail -n +8 | tail -6 |  awk '{total+=$1} END{printf "%0.2f",(NR?((total/NR)/(1024*1024)):-1)}')
-  echo "Write=$writeMB" >> /home/mqperf/cph/results
+  echo "Write=$writeMB" >> /tmp/results
 
   recvGbs=$(awk -F ',' '{print $8}' /tmp/dstat | tail -n +8 | tail -6 |  awk '{total+=$1} END{printf "%0.2f",(NR?((total/NR)/(1024*1024*1024*0.125)):-1)}')
-  echo "Recv=$recvGbs" >> /home/mqperf/cph/results
+  echo "Recv=$recvGbs" >> /tmp/results
 
   sendGbs=$(awk -F ',' '{print $9}' /tmp/dstat | tail -n +8 | tail -6 |  awk '{total+=$1} END{printf "%0.2f",(NR?((total/NR)/(1024*1024*1024*0.125)):-1)}')
-  echo "Send=$sendGbs" >> /home/mqperf/cph/results
+  echo "Send=$sendGbs" >> /tmp/results
 
   qmcpu=$(tail -6 /tmp/systemerr | awk -F '=' '{print $2}' | awk '{total+=$1} END{printf "%0.2f",(NR?(total/NR):-1)}')
-  echo "QM_CPU=$qmcpu" >> /home/mqperf/cph/results
+  echo "QM_CPU=$qmcpu" >> /tmp/results
 
-  echo "" >> /home/mqperf/cph/results
+  echo "" >> /tmp/results
 
   if [ -n "${MQ_RESULTS_CSV}" ]; then
-    echo "$persistent,$msgsize,$threads,$rate,$cpu,$readMB,$writeMB,$recvGbs,$sendGbs,$qmcpu" >> /home/mqperf/cph/results.csv
+    echo "$persistent,$msgsize,$threads,$rate,$cpu,$readMB,$writeMB,$recvGbs,$sendGbs,$qmcpu" >> /tmp/results.csv
   fi
 }
 
@@ -61,7 +61,7 @@ function setupTLS {
   fi
 
   #Create local CCDT; alternatives are to copy it from Server or host it at http location
-  echo "DEFINE CHANNEL('$channel') CHLTYPE(CLNTCONN) CONNAME('$host($port)') SSLCIPH(${MQ_TLS_CIPHER}) QMNAME('$qmname') CERTLABL('${MQ_TLS_CERTLABEL}') REPLACE" | /opt/mqm/bin/runmqsc -n > /home/mqperf/cph/output 2>&1
+  echo "DEFINE CHANNEL('$channel') CHLTYPE(CLNTCONN) CONNAME('$host($port)') SSLCIPH(${MQ_TLS_CIPHER}) QMNAME('$qmname') CERTLABL('${MQ_TLS_CERTLABEL}') REPLACE" | /opt/mqm/bin/runmqsc -n > /tmp/output 2>&1
 
   #Add certificate label to the mqclient.ini if we are flowing a client cert; adding it the local channel definition above will work in most cases if no CD is flowed from the application
   #Support added to cph for specifying certlabel with -jw parm  
@@ -87,21 +87,21 @@ else
 fi
 
 #Write results header
-echo $(date) | tee /home/mqperf/cph/results
+echo $(date) | tee /tmp/results
 
 if [ "${nonpersistent}" -eq 1 ]; then
-  echo "Running Non Persistent Messaging Tests" | tee -a /home/mqperf/cph/results
+  echo "Running Non Persistent Messaging Tests" | tee -a /tmp/results
 else
-  echo "Running Persistent Messaging Tests" | tee -a /home/mqperf/cph/results
+  echo "Running Persistent Messaging Tests" | tee -a /tmp/results
 fi
 echo "----------------------------------------"
 
-echo "Testing QM: $qmname on host: $host using port: $port and channel: $channel" | tee -a /home/mqperf/cph/results
-echo "Clients using auto reconnect option: $reconnect" | tee -a /home/mqperf/cph/results
+echo "Testing QM: $qmname on host: $host using port: $port and channel: $channel" | tee -a /tmp/results
+echo "Clients using auto reconnect option: $reconnect" | tee -a /tmp/results
 
-echo "Using the following message sizes:" | tee -a /home/mqperf/cph/results
+echo "Using the following message sizes:" | tee -a /tmp/results
 for messageSize in ${msgsizestring}; do
-  echo "$messageSize" | tee -a /home/mqperf/cph/results 
+  echo "$messageSize" | tee -a /tmp/results 
 done
 
 #Temp check to kill pod if same IP address assigned to test harness than that used for QM
@@ -115,11 +115,11 @@ if [ -n "${MQ_IP_CHECK}" ]; then
 fi
 
 if [ -n "${MQ_CPH_EXTRA}" ]; then
-  echo "Extra CPH flags: ${MQ_CPH_EXTRA}" | tee -a /home/mqperf/cph/results
+  echo "Extra CPH flags: ${MQ_CPH_EXTRA}" | tee -a /tmp/results
 fi
 
 if [ -n "${MQ_TLS_CIPHER}" ]; then
-  echo "TLS Cipher: ${MQ_TLS_CIPHER}" | tee -a /home/mqperf/cph/results
+  echo "TLS Cipher: ${MQ_TLS_CIPHER}" | tee -a /tmp/results
   # Need to complete TLS setup before we try to attach monitors
   setupTLS
 fi
@@ -138,13 +138,13 @@ fi
 if ! ( [ -n "{MQ_CLEAR_QUEUES}" ] && [ "${MQ_CLEAR_QUEUES}" = "N" ] ); then
   if [ -n "${MQ_USERID}" ]; then
     # Need to flow userid and password to runmqsc
-    echo "Using userid: ${MQ_USERID}" | tee -a /home/mqperf/cph/results
+    echo "Using userid: ${MQ_USERID}" | tee -a /tmp/results
     echo ${MQ_PASSWORD} > /tmp/clearq.mqsc
     cat /home/mqperf/cph/clearq.mqsc >> /tmp/clearq.mqsc  
-    cat /tmp/clearq.mqsc | /opt/mqm/bin/runmqsc -c -u ${MQ_USERID} -w 60 $qmname > /home/mqperf/cph/output 2>&1
+    cat /tmp/clearq.mqsc | /opt/mqm/bin/runmqsc -c -u ${MQ_USERID} -w 60 $qmname > /tmp/output 2>&1
     rm -f /tmp/clearq.mqsc
   else
-    cat /home/mqperf/cph/clearq.mqsc | /opt/mqm/bin/runmqsc -c $qmname > /home/mqperf/cph/output 2>&1
+    cat /home/mqperf/cph/clearq.mqsc | /opt/mqm/bin/runmqsc -c $qmname > /tmp/output 2>&1
   fi
 fi
 
@@ -175,32 +175,32 @@ fi
 
 #Write CSV header if required
 if [ -n "${MQ_RESULTS_CSV}" ]; then
-  echo "# CSV Results" > /home/mqperf/cph/results.csv
-  echo "# TLS Cipher: ${MQ_TLS_CIPHER}" >> /home/mqperf/cph/results.csv
-  printf "# " >> /home/mqperf/cph/results.csv
-  echo $(date) >> /home/mqperf/cph/results.csv
-  echo "# Persistence, Msg Size, Threads, Rate (RT/s), Client CPU, IO Read (MB/s), IO Write (MB/s), Net Recv (Gb/s), Net Send (Gb/s), QM CPU" >> /home/mqperf/cph/results.csv
+  echo "# CSV Results" > /tmp/results.csv
+  echo "# TLS Cipher: ${MQ_TLS_CIPHER}" >> /tmp/results.csv
+  printf "# " >> /tmp/results.csv
+  echo $(date) >> /tmp/results.csv
+  echo "# Persistence, Msg Size, Threads, Rate (RT/s), Client CPU, IO Read (MB/s), IO Write (MB/s), Net Recv (Gb/s), Net Send (Gb/s), QM CPU" >> /tmp/results.csv
 fi
 
 
 echo "----------------------------------------"
 echo "Starting cph tests----------------------"
 echo "----------------------------------------"
-./cphresp.sh ${responders} >> /home/mqperf/cph/output & disown
+./cphresp.sh ${responders} >> /tmp/output & disown
 #Wait for responders to start
 sleep 30
 #Determine sequence of requester clients to use based of number of responder clients
 getConcurrentClientsArray ${responders}
-echo "Using the following progression of concurrent connections: ${clientsArray[@]}" | tee -a /home/mqperf/cph/results
-echo "Using ${responders} responder threads" | tee -a /home/mqperf/cph/results
+echo "Using the following progression of concurrent connections: ${clientsArray[@]}" | tee -a /tmp/results
+echo "Using ${responders} responder threads" | tee -a /tmp/results
 
 IFS=:
-echo "CPH Test Results" >> /home/mqperf/cph/results
+echo "CPH Test Results" >> /tmp/results
 for messageSize in ${msgsizestring}; do
   unset IFS
-  echo $(date) >> /home/mqperf/cph/results
+  echo $(date) >> /tmp/results
   IFS=:
-  echo "$messageSize" >> /home/mqperf/cph/results
+  echo "$messageSize" >> /tmp/results
   for concurrentConnections in ${clientsArray[@]}
   do
     runclients $concurrentConnections $messageSize
@@ -209,14 +209,14 @@ done
 unset IFS
 
 if ! [ "${MQ_RESULTS}" = "FALSE" ]; then
-  cat /home/mqperf/cph/results
+  cat /tmp/results
 fi
 
 if [ -n "${MQ_DATA}" ] && [ ${MQ_DATA} -eq 1 ]; then
   cat /tmp/system
   cat /tmp/disklog
   cat /tmp/nhalog
-  cat /home/mqperf/cph/output
+  cat /tmp/output
 fi
 
 if [ -n "${MQ_ERRORS}" ]; then
@@ -224,7 +224,7 @@ if [ -n "${MQ_ERRORS}" ]; then
 fi
 
 if [ -n "${MQ_RESULTS_CSV}" ]; then
-  cat /home/mqperf/cph/results.csv
+  cat /tmp/results.csv
 fi
 
 echo "----------------------------------------"
